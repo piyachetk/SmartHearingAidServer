@@ -41,6 +41,7 @@ NUMERATOR, DENOMINATOR = spl.A_weighting(RATE)
 
 is_stop = False
 multiplier = 2
+block = bytearray()
 
 if __name__ == '__main__':
 
@@ -81,17 +82,27 @@ if __name__ == '__main__':
     exit_key_thread = threading.Thread(target=exit_key)
     exit_key_thread.start()
 
-    def amplify():
-        global is_stop, multiplier
+    def record():
+        global block
         while not is_stop:
             try:
-                # Amplify and play
-                read = stream.read(CHUNK, exception_on_overflow=False)
-                amplified = audioop.mul(read, 1, multiplier)
-                stream.write(amplified, CHUNK)  # play back audio stream
+                block = stream.read(CHUNK, exception_on_overflow=False)
             except OSError:
                 pass
 
+
+    record_thread = threading.Thread(target=record)
+    record_thread.start()
+
+    def amplify():
+        global is_stop, multiplier, block
+        while not is_stop:
+            try:
+                # Amplify and play
+                amplified = audioop.mul(block, 1, multiplier)
+                stream.write(amplified, CHUNK)  # play back audio stream
+            except OSError:
+                pass
 
     amplify_thread = threading.Thread(target=amplify)
     amplify_thread.start()
@@ -105,8 +116,6 @@ if __name__ == '__main__':
                 break
 
             try:
-                block = stream.read(CHUNK, exception_on_overflow=False)
-
                 ## Int16 is a numpy data type which is Integer (-32768 to 32767)
                 ## If you put Int8 or Int32, the result numbers will be ridiculous
                 decoded_block = numpy.fromstring(block, 'Int16')
