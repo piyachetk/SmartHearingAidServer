@@ -3,6 +3,7 @@ filterwarnings("ignore")
 
 import threading
 import keyboard
+import os
 
 from btserver import BTServer
 from bterror import BTError
@@ -83,36 +84,42 @@ if __name__ == '__main__':
     def amplify():
         global is_stop, multiplier
         while not is_stop:
-            # Amplify and play
-            read = stream.read(CHUNK, exception_on_overflow=False)
-            amplified = audioop.mul(read, 1, multiplier)
-            stream.write(amplified, CHUNK)  # play back audio stream
+            try:
+                # Amplify and play
+                read = stream.read(CHUNK, exception_on_overflow=False)
+                amplified = audioop.mul(read, 1, multiplier)
+                stream.write(amplified, CHUNK)  # play back audio stream
+            except OSError:
+                pass
+
 
     amplify_thread = threading.Thread(target=amplify)
     amplify_thread.start()
 
     while True:
         for client_handler in server.active_client_handlers.copy():
+            # Use a copy() to get the copy of the set, avoiding 'set change size during iteration' error
+
             if is_stop:
                 client_handler.handle_close()
                 break
 
-            # Use a copy() to get the copy of the set, avoiding 'set change size during iteration' error
-
-            block = stream.read(CHUNK, exception_on_overflow=False)
-
-            ## Int16 is a numpy data type which is Integer (-32768 to 32767)
-            ## If you put Int8 or Int32, the result numbers will be ridiculous
-            decoded_block = numpy.fromstring(block, 'Int16')
-            ## This is where you apply A-weighted filter
-            y = lfilter(NUMERATOR, DENOMINATOR, decoded_block)
-            new_decibel = 20 * numpy.log10(spl.rms_flat(y)) + 30
-
-            msg = str(new_decibel) + " dBA"
-            # print(msg)
-
             try:
+                block = stream.read(CHUNK, exception_on_overflow=False)
+
+                ## Int16 is a numpy data type which is Integer (-32768 to 32767)
+                ## If you put Int8 or Int32, the result numbers will be ridiculous
+                decoded_block = numpy.fromstring(block, 'Int16')
+                ## This is where you apply A-weighted filter
+                y = lfilter(NUMERATOR, DENOMINATOR, decoded_block)
+                new_decibel = 20 * numpy.log10(spl.rms_flat(y)) + 30
+
+                msg = str(new_decibel) + " dBA"
+                # print(msg)
+
                 client_handler.send(msg.encode())
+            except OSError:
+                pass
             except Exception as e:
                 BTError.print_error(handler=client_handler, error=BTError.ERR_WRITE, error_message=repr(e))
                 client_handler.handle_close()
