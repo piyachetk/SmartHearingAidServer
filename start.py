@@ -81,7 +81,7 @@ if __name__ == '__main__':
         global is_stop, multiplier
         while not is_stop:
             # Amplify and play
-            read = stream.read(CHUNK)
+            read = stream.read(CHUNK, exception_on_overflow=False)
             amplified = audioop.mul(read, 1, multiplier)
             stream.write(amplified, CHUNK)  # play back audio stream
 
@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
             # Use a copy() to get the copy of the set, avoiding 'set change size during iteration' error
 
-            block = stream.read(CHUNK)
+            block = stream.read(CHUNK, exception_on_overflow=False)
 
             ## Int16 is a numpy data type which is Integer (-32768 to 32767)
             ## If you put Int8 or Int32, the result numbers will be ridiculous
