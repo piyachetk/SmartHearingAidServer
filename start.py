@@ -1,3 +1,6 @@
+from warnings import filterwarnings
+filterwarnings("ignore")
+
 import threading
 import keyboard
 
@@ -100,7 +103,7 @@ if __name__ == '__main__':
 
             ## Int16 is a numpy data type which is Integer (-32768 to 32767)
             ## If you put Int8 or Int32, the result numbers will be ridiculous
-            decoded_block = numpy.frombuffer(block, 'Int16')
+            decoded_block = numpy.fromstring(block, 'Int16')
             ## This is where you apply A-weighted filter
             y = lfilter(NUMERATOR, DENOMINATOR, decoded_block)
             new_decibel = 20 * numpy.log10(spl.rms_flat(y)) + 30
